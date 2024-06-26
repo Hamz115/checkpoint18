@@ -320,8 +320,29 @@ bool DijkstraGlobalPlanner::dijkstraShortestPath(
 
         else {
             std::unordered_map<int, double> neighbors = find_neighbors(current_node, costmap_flat);
+            for (const auto& pair : neighbors) {
+                // If neighbour belongs to closed_list then skip and pick the next neighbour
+                if (closed_list.count(pair.first) > 0) {
+                    continue;
+                }
+                // Case 1:Neighbour is inside open_list
+                double current_neighbor_cost =  pair.second + g_costs[current_node];
+                if (g_costs.count(pair.first) == 0) {
+                    g_costs[pair.first] = pair.second + g_costs[current_node];
+                    parents[pair.first] = current_node;
+                    open_list.push_back(std::make_pair(pair.first, current_neighbor_cost));
+                    RCLCPP_DEBUG(node_->get_logger(), "Pushing new element node: %i with cost %.3f", pair.first, g_costs[pair.first]);
+                    
+                }
+                // Case 2: Neighbor is not inside open_list
+                else if (current_neighbor_cost < g_costs[pair.first]) {     
+                    g_costs[pair.first] = current_neighbor_cost;
+                    parents[pair.first] = current_node;    
+                }
+            }
+        }
+    }
 
-    
 
 
 
