@@ -298,7 +298,7 @@ bool DijkstraGlobalPlanner::dijkstraShortestPath(
 
   /** YOUR CODE STARTS HERE */
 
-//   Loop over the main list
+    //Loop over the main list
     while (!open_list.empty()) {
         // Sort open list by g_cost
         std::sort(open_list.begin(), open_list.end(), []
@@ -321,7 +321,7 @@ bool DijkstraGlobalPlanner::dijkstraShortestPath(
         else {
             std::unordered_map<int, double> neighbors = find_neighbors(current_node, costmap_flat);
             for (const auto& pair : neighbors) {
-                // If neighbour belongs to closed_list then skip and pick the next neighbour
+                // If neighbour belongs to closed_list then skip it and pick the next neighbour
                 if (closed_list.count(pair.first) > 0) {
                     continue;
                 }
@@ -343,15 +343,18 @@ bool DijkstraGlobalPlanner::dijkstraShortestPath(
         }
     }
 
-
-
-
-
-
-
-
-
-
+    // Build the path
+    if (path_found) {
+        while (current_node != start_cell_index) {
+            shortest_path.push_back(current_node);
+            current_node = parents[current_node];
+        }
+        // Add the starting node
+        shortest_path.push_back(start_cell_index);
+        std::reverse(shortest_path.begin(), shortest_path.end());
+    }
+    RCLCPP_INFO(node_->get_logger(), "Path found: %s", path_found ? "true" : "false");
+    
 
 
   /** YOUR CODE ENDS HERE */
