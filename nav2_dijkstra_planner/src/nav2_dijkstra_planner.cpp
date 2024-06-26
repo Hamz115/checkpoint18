@@ -298,6 +298,41 @@ bool DijkstraGlobalPlanner::dijkstraShortestPath(
 
   /** YOUR CODE STARTS HERE */
 
+//   Loop over the main list
+    while (!open_list.empty()) {
+        // Sort open list by g_cost
+        std::sort(open_list.begin(), open_list.end(), []
+        (const std::pair<int, double>& a, const std::pair<int, double>& b) 
+        {return a.second < b.second;});
+        // Update curent node with smallest g_cost
+        current_node = open_list[0].first;
+        RCLCPP_DEBUG(node_->get_logger(), "Current node: %i with cost: %.3f", current_node, g_costs[current_node]);
+        open_list.erase(open_list.begin());
+        closed_list.insert(current_node);
+        for (const auto& pair : open_list) {
+            RCLCPP_DEBUG(node_->get_logger(), "Node: %i has cost: %.3f", pair.first, pair.second);
+        }
+        // Check if goal node has been reached
+        if (current_node == goal_cell_index) {
+            path_found = true;
+            break;
+        }
+
+        else {
+            std::unordered_map<int, double> neighbors = find_neighbors(current_node, costmap_flat);
+
+    
+
+
+
+
+
+
+
+
+
+
+
   /** YOUR CODE ENDS HERE */
 
   return true;
