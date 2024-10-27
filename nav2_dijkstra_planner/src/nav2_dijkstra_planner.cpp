@@ -298,62 +298,81 @@ bool DijkstraGlobalPlanner::dijkstraShortestPath(
 
   /** YOUR CODE STARTS HERE */
 
-    //Loop over the main list
-    while (!open_list.empty()) {
-        // Sort open list by g_cost
-        std::sort(open_list.begin(), open_list.end(), []
-        (const std::pair<int, double>& a, const std::pair<int, double>& b) 
-        {return a.second < b.second;});
-        // Update curent node with smallest g_cost
-        current_node = open_list[0].first;
-        RCLCPP_DEBUG(node_->get_logger(), "Current node: %i with cost: %.3f", current_node, g_costs[current_node]);
-        open_list.erase(open_list.begin());
-        closed_list.insert(current_node);
-        for (const auto& pair : open_list) {
-            RCLCPP_DEBUG(node_->get_logger(), "Node: %i has cost: %.3f", pair.first, pair.second);
-        }
-        // Check if goal node has been reached
-        if (current_node == goal_cell_index) {
-            path_found = true;
-            break;
-        }
+    // Phase I: Find the path
+  while (!open_list.empty()) {
+    // 1. Extract node with smallest g_cost
+    std::sort(
+        open_list.begin(), open_list.end(),
+        [](const std::pair<int, double> &a, const std::pair<int, double> &b) {
+          return a.second < b.second;
+        });
+    current_node = open_list[0].first;
+    double current_cost = open_list[0].second;
+    open_list.erase(open_list.begin());
 
-        else {
-            std::unordered_map<int, double> neighbors = find_neighbors(current_node, costmap_flat);
-            for (const auto& pair : neighbors) {
-                // If neighbour belongs to closed_list then skip it and pick the next neighbour
-                if (closed_list.count(pair.first) > 0) {
-                    continue;
-                }
-                // Case 1:Neighbour is inside open_list
-                double current_neighbor_cost =  pair.second + g_costs[current_node];
-                if (g_costs.count(pair.first) == 0) {
-                    g_costs[pair.first] = pair.second + g_costs[current_node];
-                    parents[pair.first] = current_node;
-                    open_list.push_back(std::make_pair(pair.first, current_neighbor_cost));
-                    RCLCPP_DEBUG(node_->get_logger(), "Pushing new element node: %i with cost %.3f", pair.first, g_costs[pair.first]);
-                    
-                }
-                // Case 2: Neighbor is not inside open_list
-                else if (current_neighbor_cost < g_costs[pair.first]) {     
-                    g_costs[pair.first] = current_neighbor_cost;
-                    parents[pair.first] = current_node;    
-                }
-            }
-        }
+    // 2. Mark as visited
+    closed_list.insert(current_node);
+    RCLCPP_DEBUG(node_->get_logger(), "Processing node %i with cost %.3f",
+                 current_node, current_cost);
+
+    // 3. Check if target reached
+    if (current_node == goal_cell_index) {
+      path_found = true;
+      break;
     }
 
-    // Build the path
-    if (path_found) {
-        while (current_node != start_cell_index) {
-            shortest_path.push_back(current_node);
-            current_node = parents[current_node];
+    // 4. Process neighbors
+    std::unordered_map<int, double> neighbors =
+        find_neighbors(current_node, costmap_flat);
+    for (const auto &neighbor : neighbors) {
+      int neighbor_index = neighbor.first;
+      double neighbor_cost = neighbor.second;
+
+      // Skip if in closed list
+      if (closed_list.count(neighbor_index) > 0) {
+        continue;
+      }
+
+      // Calculate new cost to reach neighbor
+      double new_g_cost = g_costs[current_node] + neighbor_cost;
+
+      // Check if neighbor exists in g_costs
+      bool in_open_list = g_costs.count(neighbor_index) > 0;
+
+      if (in_open_list) {
+        // Case I: Neighbor is in open list
+        if (new_g_cost < g_costs[neighbor_index]) {
+          // Update cost and parent if new path is better
+          g_costs[neighbor_index] = new_g_cost;
+          parents[neighbor_index] = current_node;
         }
-        // Add the starting node
-        shortest_path.push_back(start_cell_index);
-        std::reverse(shortest_path.begin(), shortest_path.end());
+      } else {
+        // Case II: Neighbor is not in open list
+        g_costs[neighbor_index] = new_g_cost;
+        parents[neighbor_index] = current_node;
+        open_list.push_back(std::make_pair(neighbor_index, new_g_cost));
+        RCLCPP_DEBUG(node_->get_logger(), "Added new node: %i with cost %.3f",
+                     neighbor_index, new_g_cost);
+      }
     }
-    RCLCPP_INFO(node_->get_logger(), "Path found: %s", path_found ? "true" : "false");
+  }
+
+  // Phase II: Build the path
+  if (path_found) {
+    // Trace back from target to start
+    int trace_node = current_node;
+    while (trace_node != start_cell_index) {
+      shortest_path.push_back(trace_node);
+      trace_node = parents[trace_node];
+    }
+    shortest_path.push_back(start_cell_index);
+
+    // Reverse to get path from start to goal
+    std::reverse(shortest_path.begin(), shortest_path.end());
+  }
+
+  RCLCPP_INFO(node_->get_logger(), "Path found: %s",
+              path_found ? "true" : "false");
     
 
 
